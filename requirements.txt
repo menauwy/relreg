@@ -5,3 +5,7 @@ nltk==3.6.6
 absl-py==0.14.0
 rouge-score==0.0.4
 summ-eval==0.89
+# pandas==1.3.0
+# conda install pytorch==1.11.0 cudatoolkit=11.3 -c pytorch
+# scikit-learn
+# pip install sentence-transformers==1.0.0

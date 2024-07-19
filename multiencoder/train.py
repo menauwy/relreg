@@ -39,6 +39,7 @@ from dataclasses import dataclass, field
 from statistics import mean
 from typing import Optional
 
+import torch
 import datasets
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
@@ -306,7 +307,12 @@ def main():
         # let's parse it to get our arguments.
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
     else:
-        model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+        model_args, data_args, training_args = parser.parse_args_into_dataclasses() # used to parse command line arguments and map them into dataclasses
+
+    # # set device
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cpu")
+    # print("Training device:", training_args.device)
 
     # Setup logging
     logging.basicConfig(
@@ -427,7 +433,8 @@ def main():
         )
 
     # Load dataset
-    if model_args.multiencoder_type is not None:
+    print("model_args.multiencoder_type", model_args.multiencoder_type)
+    if model_args.multiencoder_type is not None: #bart
         #Load dataset for multiencoder model
         if data_args.pad_to_max_length:
             raise NotImplementedError
@@ -504,6 +511,7 @@ def main():
                 data_args.dataset_name, data_args.dataset_config_name, cache_dir=model_args.cache_dir
             )
         else:
+            # use this!
             data_files = {}
             if data_args.train_file is not None:
                 data_files["train"] = data_args.train_file
@@ -514,7 +522,7 @@ def main():
             if data_args.test_file is not None:
                 data_files["test"] = data_args.test_file
                 extension = data_args.test_file.split(".")[-1]
-            raw_datasets = load_dataset(extension, data_files=data_files, cache_dir=model_args.cache_dir)
+            raw_datasets = load_dataset(extension, data_files=data_files, cache_dir=model_args.cache_dir) # csv file
         # See more about loading any type of standard or custom dataset (from files, python dict, pandas DataFrame, etc) at
         # https://huggingface.co/docs/datasets/loading_datasets.html.
 
@@ -522,8 +530,10 @@ def main():
         # We need to tokenize inputs and targets.
         if training_args.do_train:
             column_names = raw_datasets["train"].column_names
+            print('Training data column_names', column_names)
         elif training_args.do_eval:
             column_names = raw_datasets["validation"].column_names
+            print('Validation data column_names', column_names)
         elif training_args.do_predict:
             column_names = raw_datasets["test"].column_names
         else:
@@ -554,12 +564,13 @@ def main():
         max_target_length = data_args.max_target_length
         padding = "max_length" if data_args.pad_to_max_length else False
 
+        # tokenize datasets
         def preprocess_function(examples):
             inputs = examples[text_column]
             targets = examples[summary_column]
             inputs = [prefix + inp for inp in inputs]
             model_inputs = tokenizer(inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
-
+        
             # Setup the tokenizer for targets
             with tokenizer.as_target_tokenizer():
                 labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
@@ -572,8 +583,12 @@ def main():
                 ]
 
             model_inputs["labels"] = labels["input_ids"]
+            # # change all items to tensors:
+            # for k, v in model_inputs.items():
+            #     model_inputs[k] = torch.tensor(v)
             return model_inputs
 
+        # "train dataset map pre-processing"
         if training_args.do_train:
             if "train" not in raw_datasets:
                 raise ValueError("--do_train requires a train dataset")
@@ -589,7 +604,17 @@ def main():
                     load_from_cache_file=not data_args.overwrite_cache,
                     desc="Running tokenizer on train dataset",
                 )
-
+                # print('the first sample in training dataset', _train_dataset[0])
+                # change all items to tensors:
+                # train_dataset = []
+                # for i in range(len(_train_dataset)):
+                #     dict = {}
+                #     for k, v in _train_dataset[i].items():
+                #         dict[k] = torch.tensor(v)
+                #     train_dataset.append(dict)
+                # print('the first sample type in training dataset', train_dataset[0])
+                
+        # "valid dataset map pre-processing"
         if training_args.do_eval:
             max_target_length = data_args.val_max_target_length
             if "validation" not in raw_datasets:
@@ -606,8 +631,8 @@ def main():
                     load_from_cache_file=not data_args.overwrite_cache,
                     desc="Running tokenizer on validation dataset",
                 )
-                print('size of labels tensor', max(len(item['labels']) for item in eval_dataset))
 
+        # "test dataset map pre-processing"
         if training_args.do_predict:
             max_target_length = data_args.val_max_target_length
             if "test" not in raw_datasets:
@@ -674,8 +699,8 @@ def main():
     trainer = Seq2SeqTrainer(
         model=model,
         args=training_args,
-        train_dataset=train_dataset if training_args.do_train else None,
-        eval_dataset=eval_dataset if training_args.do_eval else None,
+        train_dataset=train_dataset if training_args.do_train else None, # after preprocess function
+        eval_dataset=eval_dataset if training_args.do_eval else None, # after preprocess function
         tokenizer=tokenizer,
         data_collator=data_collator,
         compute_metrics=(

@@ -3,7 +3,10 @@
  * All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
-"""
+
+ sorting the chunks of text based on the model's prediction scores 
+and writing the sorted text along with the target text to several output files.
+ """
 
 import sys
 import os
@@ -17,9 +20,9 @@ if __name__ == "__main__":
     output_dir = sys.argv[2]
 
 
-    totals = {"train": 1257, "val": 272, "test": 281}
+    totals = {"train": 5000, "val": 100, "test": 258}
     for split in ["train", "val", "test"]:
-        pred_file = f"{output_dir}-{split}/predict_None.txt" # transformer output fname
+        pred_file = f"{output_dir}/{split}/predict_results_None.txt" # transformer output fname
         preds = []
         with open(pred_file) as f_pred:
             next(f_pred)
@@ -27,21 +30,21 @@ if __name__ == "__main__":
                 score = float(line.strip().split()[-1])
                 preds.append(score)
 
-        id2meetingsrc = {}
+        # id2meetingsrc = {}
         if do_chunks:
             fname = os.path.join(os.path.dirname( __file__ ), "..", \
                 "data", f"{split}.rouge.chunks.jsonl")
         else:
             fname = os.path.join(os.path.dirname( __file__ ), "..", \
-                "data", f'{split}-meetings.jsonl')
-        with open(fname) as f:
-            for line in f:
-                meeting_data = json.loads(line)
-                if do_chunks:
-                    meeting_source = meeting_data['chunks']
-                else:
-                    meeting_source = meeting_data['meeting_transcripts']
-                id2meetingsrc[meeting_data['meeting_id']] = meeting_source
+                "data", f'{split}.jsonl')
+        # with open(fname) as f:
+        #     for line in f:
+        #         meeting_data = json.loads(line)
+        #         if do_chunks:
+        #             meeting_source = meeting_data['chunks']
+        #         else:
+        #             meeting_source = meeting_data['pos']
+        #         id2meetingsrc[meeting_data['sample_id']] = meeting_source
 
         chunk_counter = 0
         with open(fname) as f, open(f"{output_dir}/{split}.csv", "w") as out, \
@@ -53,7 +56,8 @@ if __name__ == "__main__":
             for line in f:
                 data = json.loads(line)
 
-                meeting_utterances = id2meetingsrc[data['meeting_id']]
+                # meeting_utterances = id2meetingsrc[data['meeting_id']]
+                meeting_utterances = data['pos']
                 cur_preds = preds[chunk_counter: chunk_counter + len(meeting_utterances)]
                 chunk_counter += len(meeting_utterances)
 
@@ -74,7 +78,7 @@ if __name__ == "__main__":
                 utts_ordered = [meeting_utterances[x] for x in indices]
                 meeting_source = " ".join(utts_ordered)
 
-                target = data["answer"]
+                target = data["intent"]
                 source = f"{query}</s> {meeting_source}"
                 cur_data = {"text": source, "summary": target}
                 writer.writerow(cur_data)

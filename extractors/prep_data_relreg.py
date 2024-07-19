@@ -3,6 +3,9 @@
  * All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+
+# sent1, sent2, label
+# query, uttr, rouge_score
 """
 
 import os
@@ -20,39 +23,42 @@ if __name__ == "__main__":
     do_chunks = int(sys.argv[1])
 
     for split in ["train", "val", "test"]:
-        id2meetingsrc = {}
-        if do_chunks:
-            fname = os.path.join(os.path.dirname( __file__ ), \
-                 "data", f'{split}.rouge.256.jsonl')
-        else:
-            fname = os.path.join(os.path.dirname( __file__ ), "..", \
-                "data", f'{split}.rouge.jsonl')
-        with open(fname) as f:
-            for line in f:
-                meeting_data = json.loads(line)
-                if do_chunks:
-                    id2meetingsrc[meeting_data['meeting_id']] = meeting_data['chunks']
-                else:
-                    id2meetingsrc[meeting_data['meeting_id']] = meeting_data['meeting_transcripts']
+        # id2meeting transcripts
+        # id2meetingsrc = {}
+        # if do_chunks:
+        #     fname = os.path.join(os.path.dirname( __file__ ), \
+        #          "data", f'{split}.rouge.256.jsonl')
+        # else:
+        #     fname = os.path.join(os.path.dirname( __file__ ), "..", \
+        #         "data", f'{split}.rouge.jsonl')
+        # with open(fname) as f:
+        #     for line in f:
+        #         meeting_data = json.loads(line)
+        #         if do_chunks:
+        #             id2meetingsrc[meeting_data['meeting_id']] = meeting_data['chunks']
+        #         else:
+        #             id2meetingsrc[meeting_data['meeting_id']] = meeting_data['meeting_transcripts']
 
         if do_chunks:
             fname = os.path.join(os.path.dirname( __file__ ), "data", f'{split}.rouge.256.jsonl')
             fname_out_csv = os.path.join(os.path.dirname( __file__ ), \
                 "..", "data", f"{split}.relreg.256.csv")
         else:
-            fname = os.path.join(os.path.dirname( __file__ ), "..", "data", f"{split}.jsonl")
+            fname = os.path.join(os.path.dirname( __file__ ), "..", "data", f"{split}.rouge.jsonl")
             fname_out_csv = os.path.join(os.path.dirname( __file__ ), \
                 "..", "data", f"{split}.relreg.csv")
 
-        totals = {"train": 1257, "val": 272, "test": 281}
+        totals = {"train": 5000, "val": 100, "test": 258}
+        # .rouge.jsonl is input, .relreg.csv is output
         with open(fname) as f, open(fname_out_csv, "w") as outr:
             writer = csv.DictWriter(outr, fieldnames=["sentence1", "sentence2", "label"])
             writer.writeheader()
             for line in tqdm(f, total=totals[split]):
                 data = json.loads(line)
 
-                meeting_utterances = id2meetingsrc[data['meeting_id']]
-                target = data['answer']
+                # meeting_utterances = id2meetingsrc[data['meeting_id']]
+                meeting_utterances = data['pos']
+                target = data['intent']
                 query = data['query']
                 scores = data["utt_rouge_f1"]
 

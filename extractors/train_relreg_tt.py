@@ -30,14 +30,14 @@ def get_examples(split, do_chunks):
             if do_chunks:
                 id2meetingsrc[meeting_data['meeting_id']] = meeting_data['chunks']
             else:
-                id2meetingsrc[meeting_data['meeting_id']] = meeting_data['meeting_transcripts']
+                id2meetingsrc[meeting_data['sample_id']] = meeting_data['pos']
 
     if do_chunks:
         fname = os.path.join(os.path.dirname( __file__ ), "data", f"{split}.rouge.256.jsonl")
     else:
         fname = os.path.join(os.path.dirname( __file__ ), "..", "data", f"{split}.rouge.jsonl")
 
-    totals = {"train": 1257, "val": 272, "test": 281}
+    totals = {"train": 5000, "val": 100, "test": 258}
     cur_examples = []
     cur_examples_meta = []
     with open(fname) as f:
@@ -45,7 +45,8 @@ def get_examples(split, do_chunks):
             data = json.loads(line)
             cur_examples_meta.append(data)
 
-            meeting_utterances = id2meetingsrc[data['meeting_id']]
+            # meeting_utterances = id2meetingsrc[data['meeting_id']]
+            meeting_utterances = data['pos']
             scores = data['utt_rouge_f1']
             query = data['query']
 
@@ -76,6 +77,7 @@ if __name__ == "__main__":
     train_batch_size = 16
     num_epochs = 4
 
+    # query, doc, label score
     train_examples, _, _ = get_examples("train", do_chunks)
     dev_examples, _, _ = get_examples("val", do_chunks)
 

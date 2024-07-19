@@ -37,8 +37,8 @@ def write_to_file(examples, meetings_dict, output_dir, split):
             query = example["query"]
             query_embedding = model.encode(f"[QRY] {query}", convert_to_tensor=True)
 
-            cur_meeting_embeddings = id2meetingsrc_embed[example['meeting_id']]
-            cur_meeting_utterances = meetings_dict[example['meeting_id']]
+            cur_meeting_embeddings = id2meetingsrc_embed[example['sample_id']]
+            cur_meeting_utterances = meetings_dict[example['sample_id']]
             cur_meeting_utterances = [x.replace("[DOC] ", "") for x in cur_meeting_utterances]
 
             cos_scores = util.pytorch_cos_sim(query_embedding, cur_meeting_embeddings)[0]
@@ -57,7 +57,8 @@ def write_to_file(examples, meetings_dict, output_dir, split):
             utts_ordered = [cur_meeting_utterances[x] for x in indices]
             meeting_source = " ".join(utts_ordered)
 
-            target = example["answer"]
+            # target = example["answer"]
+            target = example["intent"]
             source = f"{query}</s> {meeting_source}"
             cur_data = {"text": source, "summary": target}
             writer.writerow(cur_data)
@@ -80,6 +81,7 @@ if __name__ == "__main__":
     _, val_meetings_dict, val_examples = get_examples("val", do_chunks)
     _, test_meetings_dict, test_examples = get_examples("test", do_chunks)
 
+# *_examples is cur_examples_meta from train_relereg_tt.py
     write_to_file(test_examples, test_meetings_dict, output_dir, "test")
     write_to_file(train_examples, train_meetings_dict, output_dir, "train")
     write_to_file(val_examples, val_meetings_dict, output_dir, "val")
